@@ -1,0 +1,13 @@
+{
+  "name": "@bbebee/source-subsonic",
+  "version": "1.0.0",
+  "description": "Subsonic music source for BBeBee",
+  "type": "module",
+  "scripts": {
+    "compile": "node scripts/compile.mjs",
+    "validate": "node scripts/validate.mjs",
+    "test": "node scripts/validate.mjs --test"
+  },
+  "author": "BBeBee",
+  "license": "MIT"
+}
