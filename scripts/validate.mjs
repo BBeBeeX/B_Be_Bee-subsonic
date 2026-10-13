@@ -127,7 +127,7 @@ export function validateSubsonicDocument(doc, filename = 'index.json') {
   }
 
   // 2. Scalars
-  for (const key of ['sourceGroup', 'sourceIcon', 'sourceComment', 'variableComment', 'jsLib', 'concurrentRate']) {
+  for (const key of ['sourceGroup', 'sourceIcon', 'sourceComment', 'variableComment', 'jsLib', 'concurrentRate', 'loginType', 'loginUrl', 'loginCheckJs']) {
     if (doc[key] !== undefined && typeof doc[key] !== 'string') {
       at(key, 'must be a string')
     }

@@ -19,6 +19,9 @@
       "type": "password"
     }
   ],
+  "loginType": "form",
+  "loginUrl": "{{source.url}}/rest/ping.view?u={{login.user}}&p={{login.password}}&v=1.16.1&c=BBeBee&f=json",
+  "loginCheckJs": "@js:\n// Subsonic ping verification\nconst res = result && result['subsonic-response'] ? result['subsonic-response'] : result;\nreturn Boolean(res && res.status === 'ok');",
   "searchUrl": "{{source.url}}/rest/search3?query={{key}}&songCount=50&f=json&v=1.16.1&c=BBeBee",
   "exploreUrl": "[{\"title\":\"Recently added\",\"url\":\"{{source.url}}/rest/getAlbumList2?type=newest&size=100&offset={{page}}&f=json&v=1.16.1&c=BBeBee\"},{\"title\":\"Alphabetical\",\"url\":\"{{source.url}}/rest/getAlbumList2?type=alphabeticalByName&size=100&offset={{page}}&f=json&v=1.16.1&c=BBeBee\"}]",
   "ruleSearch": {
