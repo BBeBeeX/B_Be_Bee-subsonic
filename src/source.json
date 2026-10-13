@@ -7,6 +7,11 @@
   "sourceComment": "A Subsonic-compatible server. Host is configured via sourceUrl; credentials user and password are provided via loginUi.",
   "variableComment": "username:password",
   "concurrentRate": "5/1000",
+  "params": [
+    "sourceurl",
+    "username",
+    "password"
+  ],
   "loginUi": [
     {
       "id": "user",

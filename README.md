@@ -7,7 +7,8 @@
 
 本源由 B_Be_Bee 播放器及统一配置 UI（Group 4）消费，参数配置规范如下：
 
-- **服务器地址 (`host`)**：配置为 `sourceUrl`（例如 `https://music.example.org`）。
+- **可配置参数 (`params`)**：声明 `["sourceurl", "username", "password"]`，用户可在客户端自定义修改。
+- **服务器地址 (`host` / `sourceUrl`)**：默认占位地址为 `https://music.example.org`。用户手动修改服务器地址后，B_Be_Bee 客户端会自动将修改后的实际主机名动态追加到 QuickJS 沙盒的 Egress 网络访问白名单中，放行 API 与音频流请求。
 - **认证凭据 (`user` 与 `password`)**：通过 `loginUi` 表单输入，并保存至安全凭据库（Secure Credential Store）。
   - `loginUi` 声明结构：
     ```json
