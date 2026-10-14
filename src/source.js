@@ -49,7 +49,7 @@ function buildRecommendList(res, sourceUrl) {
   const rootSongs = indexes.child || [];
   const defaultCover = (rootSongs[0] && (rootSongs[0].coverArt || rootSongs[0].id)) || '';
   const defaultPlaylist = {
-    id: 'root',
+    id: 'dir-root',
     name: '默认歌单',
     title: '默认歌单',
     artist: 'Subsonic',
@@ -60,13 +60,14 @@ function buildRecommendList(res, sourceUrl) {
   };
 
   // 2. 收集其他目录下的歌单（来源于 indexes.index[].artist[]）
+  // 使用 dir- 前缀隔离物理目录 ID 与 ID3 专辑 ID，防止 URN 碰撞
   const dirs = [];
   const groups = indexes.index || [];
   for (const group of groups) {
     const list = group.artist || [];
     for (const item of list) {
       dirs.push({
-        id: String(item.id),
+        id: 'dir-' + String(item.id),
         name: item.name || item.title || 'Unknown Directory',
         title: item.name || item.title || 'Unknown Directory',
         artist: 'Subsonic',
