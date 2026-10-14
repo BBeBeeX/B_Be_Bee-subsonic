@@ -18,7 +18,7 @@ function getBaseUrl() {
  * 使用标准 Subsonic MD5 盐值哈希: token = md5(password + salt)
  */
 function auth() {
-  let u = src.vars.get('user') || '';
+  let u = src.vars.get('user') || src.vars.get('username') || '';
   let p = src.vars.get('password') || '';
   if (!u || !p) {
     const v = String(src.vars.get('var') || '');
