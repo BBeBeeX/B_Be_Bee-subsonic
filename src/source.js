@@ -93,15 +93,58 @@ function buildRecommendList(res, sourceUrl) {
 /**
  * 提取目录、根目录索引或专辑中的歌曲列表
  * 自动排除子文件夹，仅保留音频文件
+ * 针对封面处理：优先获取歌曲自己的封面（独立 coverArt 或音频文件自身 ID），如果没有再使用当前目录封面
  * @param {object} res - 响应对象
  */
 function getDirectorySongs(res) {
   const root = (res && res['subsonic-response']) || res || {};
+  const dir = root.directory || root.album || root.indexes || {};
+  const dirCover = (dir && (dir.coverArt != null ? String(dir.coverArt) : (dir.id != null ? String(dir.id) : ''))) || '';
+  const dirId = dir && dir.id != null ? String(dir.id) : '';
+
   const list = (root.directory && root.directory.child) ||
     (root.indexes && root.indexes.child) ||
     (root.album && root.album.song) || [];
-  return list.filter(function (item) {
-    return !item.isDir;
+
+  return list
+    .filter(function (item) {
+      return !item.isDir;
+    })
+    .map(function (item) {
+      // 优先获取歌曲自己的 cover：
+      // 1. 若 item.coverArt 存在且与当前目录 coverArt / 目录 ID / parent 不同，说明已是歌曲自身独立的 coverArt
+      // 2. 否则如果歌曲自身拥有独立 ID (item.id)，优先使用歌曲 ID 作为 coverArt（Subsonic 服务端会自动提取音频内嵌封面，无内嵌封面时自动回退为父目录封面）
+      // 3. 若歌曲无独立 ID，则回退使用目录封面 (dirCover 或 item.parent)
+      let cover = item.coverArt != null ? String(item.coverArt) : '';
+      const parent = item && item.parent != null ? String(item.parent) : '';
+      const isDirCover = cover !== '' && (cover === dirCover || cover === dirId || cover === parent);
+      if (!cover || isDirCover) {
+        cover = (item && item.id != null && item.id !== '') ? String(item.id) : (dirCover || parent || '');
+      }
+      return Object.assign({}, item, {
+        coverArt: cover,
+      });
+    });
+}
+
+/**
+ * 提取搜索结果中的歌曲列表，并保证封面有效性（优先歌曲自身封面，回退歌曲 ID）
+ * @param {object} res - 响应对象
+ */
+function getSearchSongs(res) {
+  const root = (res && res['subsonic-response']) || res || {};
+  const songs = (root.searchResult3 && root.searchResult3.song) ||
+    (root.searchResult2 && root.searchResult2.song) || [];
+  return songs.map(function (item) {
+    let cover = item.coverArt != null ? String(item.coverArt) : '';
+    const parent = item && item.parent != null ? String(item.parent) : '';
+    const isDirCover = cover !== '' && (cover === parent);
+    if (!cover || isDirCover) {
+      cover = (item && item.id != null && item.id !== '') ? String(item.id) : (parent || '');
+    }
+    return Object.assign({}, item, {
+      coverArt: cover,
+    });
   });
 }
 

@@ -1,7 +1,7 @@
 {
   "sourceUrl": "https://Subsonic.example.org",
   "sourceName": "Subsonic",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "author": "BBeBee",
   "sourceGroup": "self-hosted,subsonic",
   "needsLyricSource": true,
@@ -42,7 +42,7 @@
     "childUrl": "$.childUrl"
   },
   "ruleSearch": {
-    "trackList": "$.subsonic-response.searchResult3.song[*]",
+    "trackList": "@js:\n// Extract songs from search result\nreturn getSearchSongs(result);",
     "trackId": "$.id",
     "title": "$.title",
     "artist": "$.artist",
