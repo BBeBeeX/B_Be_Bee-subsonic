@@ -20,6 +20,7 @@ const RULE_FIELDS = {
   ruleTrackList: ['trackList', 'title', 'trackId', 'artist', 'album', 'albumId', 'artwork', 'durationMs', 'quality', 'streamUrl', 'childUrl', 'kind'],
   ruleAlbum: ['title', 'artist', 'artwork', 'year', 'description', 'trackCount', 'trackListUrl', 'childUrl'],
   ruleStream: ['url', 'headers', 'mimeType', 'codec', 'bitrateKbps', 'sampleRate', 'byteLength', 'seekable', 'expiresAt', 'quality', 'qualities'],
+  ruleRecommend: ['trackList', 'title', 'trackId', 'artist', 'album', 'albumId', 'artwork', 'durationMs', 'quality', 'streamUrl', 'childUrl', 'kind'],
   ruleLyric: ['lyric', 'format', 'offsetMs'],
 }
 
@@ -127,7 +128,7 @@ export function validateSubsonicDocument(doc, filename = 'index.json') {
   }
 
   // 2. Scalars
-  for (const key of ['sourceGroup', 'sourceIcon', 'sourceComment', 'variableComment', 'jsLib', 'concurrentRate', 'loginType', 'loginUrl', 'loginCheckJs']) {
+  for (const key of ['sourceGroup', 'sourceIcon', 'sourceComment', 'variableComment', 'jsLib', 'concurrentRate', 'loginType', 'loginUrl', 'loginCheckJs', 'recommendUrl', 'searchUrl', 'exploreUrl']) {
     if (doc[key] !== undefined && typeof doc[key] !== 'string') {
       at(key, 'must be a string')
     }

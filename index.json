@@ -1,10 +1,10 @@
 {
   "sourceUrl": "https://music.example.org",
-  "sourceName": "Navidrome — example",
-  "version": "1.0.0",
+  "sourceName": "Subsonic",
+  "version": "1.1.0",
   "author": "BBeBee",
   "sourceGroup": "self-hosted,subsonic",
-  "sourceComment": "A Subsonic-compatible server. Host is configured via sourceUrl; credentials user and password are provided via loginUi.",
+  "sourceComment": "Subsonic-compatible music server. Host is configured via sourceUrl; credentials user and password are provided via loginUi.",
   "variableComment": "username:password",
   "concurrentRate": "5/1000",
   "params": [
@@ -26,9 +26,19 @@
   ],
   "loginType": "form",
   "loginUrl": "{{source.url}}/rest/ping.view?u={{login.user}}&p={{login.password}}&v=1.16.1&c=BBeBee&f=json",
-  "loginCheckJs": "@js:\n// Subsonic ping verification\nconst res = result && result['subsonic-response'] ? result['subsonic-response'] : result;\nreturn Boolean(res && res.status === 'ok');",
-  "searchUrl": "{{source.url}}/rest/search3?query={{key}}&songCount=50&f=json&v=1.16.1&c=BBeBee",
-  "exploreUrl": "[{\"title\":\"Recently added\",\"url\":\"{{source.url}}/rest/getAlbumList2?type=newest&size=100&offset={{page}}&f=json&v=1.16.1&c=BBeBee\"},{\"title\":\"Alphabetical\",\"url\":\"{{source.url}}/rest/getAlbumList2?type=alphabeticalByName&size=100&offset={{page}}&f=json&v=1.16.1&c=BBeBee\"}]",
+  "loginCheckJs": "@js:\n// Check if Subsonic response status is ok\nconst res = (result && result['subsonic-response']) || result;\nreturn Boolean(res && res.status === 'ok');",
+  "searchUrl": "{{source.url}}/rest/search3.view?query={{key}}&songCount=50&songOffset={{@js:(page-1)*50}}&{{@js:auth()}}",
+  "exploreUrl": "[{\"title\":\"Recently added\",\"url\":\"{{source.url}}/rest/getAlbumList2.view?type=newest&size=100&offset={{@js:(page-1)*100}}&{{@js:auth()}}\"},{\"title\":\"Alphabetical\",\"url\":\"{{source.url}}/rest/getAlbumList2.view?type=alphabeticalByName&size=100&offset={{@js:(page-1)*100}}&{{@js:auth()}}\"}]",
+  "recommendUrl": "{{source.url}}/rest/getIndexes.view?{{@js:auth()}}",
+  "ruleRecommend": {
+    "trackList": "@js:\nreturn buildRecommendList(result);",
+    "trackId": "$.id",
+    "title": "$.name || $.title",
+    "artist": "$.artist",
+    "kind": "=album",
+    "artwork": "={{source.url}}/rest/getCoverArt.view?id={{item.coverArt}}&{{@js:auth()}}",
+    "childUrl": "$.childUrl"
+  },
   "ruleSearch": {
     "trackList": "$.subsonic-response.searchResult3.song[*]",
     "trackId": "$.id",
@@ -37,10 +47,11 @@
     "album": "$.album",
     "albumId": "$.albumId",
     "durationMs": "$.duration##$##000",
+    "artwork": "={{source.url}}/rest/getCoverArt.view?id={{item.coverArt}}&{{@js:auth()}}",
     "quality": "$.suffix"
   },
   "ruleStream": {
-    "url": "={{source.url}}/rest/stream?id={{track.id}}&f=json&v=1.16.1&c=BBeBee",
+    "url": "={{source.url}}/rest/stream.view?id={{track.id}}&{{@js:auth()}}",
     "seekable": "=true"
   },
   "ruleExplore": {
@@ -49,25 +60,28 @@
     "title": "$.name",
     "artist": "$.artist",
     "kind": "=album",
-    "childUrl": "={{source.url}}/rest/getAlbum?id={{item.id}}&f=json&v=1.16.1&c=BBeBee"
+    "artwork": "={{source.url}}/rest/getCoverArt.view?id={{item.coverArt}}&{{@js:auth()}}",
+    "childUrl": "={{source.url}}/rest/getAlbum.view?id={{item.id}}&{{@js:auth()}}"
   },
   "ruleTrackList": {
-    "trackList": "$.subsonic-response.album.song[*]",
+    "trackList": "@js:\n// Extract songs from directory, indexes, or album response\nreturn getDirectorySongs(result);",
     "trackId": "$.id",
     "title": "$.title",
     "artist": "$.artist",
     "album": "$.album",
     "albumId": "$.albumId",
     "durationMs": "$.duration##$##000",
+    "artwork": "={{source.url}}/rest/getCoverArt.view?id={{item.coverArt}}&{{@js:auth()}}",
     "quality": "$.suffix"
   },
   "ruleAlbum": {
-    "title": "$.subsonic-response.album.name",
-    "artist": "$.subsonic-response.album.artist",
+    "title": "$.subsonic-response.directory.name || $.subsonic-response.album.name || =默认歌单",
+    "artist": "$.subsonic-response.directory.artist || $.subsonic-response.album.artist || =Subsonic",
     "year": "$.subsonic-response.album.year",
     "trackCount": "$.subsonic-response.album.songCount"
   },
   "ruleLyric": {
-    "lyric": "={{source.url}}/rest/getLyrics?artist={{track.artist}}&title={{track.title}}&f=json&v=1.16.1&c=BBeBee"
-  }
+    "lyric": "={{source.url}}/rest/getLyrics.view?artist={{track.artist}}&title={{track.title}}&{{@js:auth()}}"
+  },
+  "jsLib": "/**\n * Subsonic / Navidrome / Airsonic 辅助运行时函数库\n * 提供请求鉴权签名、URL 清洗、推荐歌单生成与目录歌曲提取功能\n */\n\n/**\n * 获取清洗后的服务器基础地址\n * 移除浏览器地址栏常见的 /index.view 或 /login.view 等后缀\n */\nfunction getBaseUrl() {\n  const raw = (typeof source !== 'undefined' && source && source.url) || '';\n  return raw.replace(/\\/(index|login)\\.view(\\?.*)?$/i, '').replace(/\\/+$/, '');\n}\n\n/**\n * 生成 Subsonic REST API 鉴权查询字符串\n * 优先读取独立凭据 user 和 password，兼容单字段 var (user:password)\n * 使用标准 Subsonic MD5 盐值哈希: token = md5(password + salt)\n */\nfunction auth() {\n  let u = src.vars.get('user') || '';\n  let p = src.vars.get('password') || '';\n  if (!u || !p) {\n    const v = String(src.vars.get('var') || '');\n    if (v.includes(':')) {\n      const idx = v.indexOf(':');\n      u = u || v.slice(0, idx);\n      p = p || v.slice(idx + 1);\n    }\n  }\n  const s = src.crypto.randomHex(8);\n  const t = src.crypto.md5(p + s);\n  return 'u=' + encodeURIComponent(u) + '&t=' + t + '&s=' + s + '&v=1.16.1&c=BBeBee&f=json';\n}\n\n/**\n * 生成推荐歌单列表\n * 规则要求：返回的歌单列表第1个是默认歌单（来自根目录），之后的是其他目录下的歌单（随机）\n * @param {object} res - getIndexes.view 响应对象\n * @param {string} sourceUrl - 音乐源基础地址\n */\nfunction buildRecommendList(res, sourceUrl) {\n  const root = (res && res['subsonic-response']) || res || {};\n  const indexes = root.indexes || {};\n  const baseUrl = getBaseUrl() || (sourceUrl ? String(sourceUrl).replace(/\\/+$/, '') : '');\n  const authQuery = auth();\n\n  // 1. 构建首位默认歌单（来源于根目录音乐文件 indexes.child）\n  const rootSongs = indexes.child || [];\n  const defaultCover = (rootSongs[0] && (rootSongs[0].coverArt || rootSongs[0].id)) || '';\n  const defaultPlaylist = {\n    id: 'root',\n    name: '默认歌单',\n    title: '默认歌单',\n    artist: 'Subsonic',\n    kind: 'album',\n    coverArt: defaultCover,\n    trackCount: rootSongs.length,\n    childUrl: baseUrl + '/rest/getIndexes.view?' + authQuery,\n  };\n\n  // 2. 收集其他目录下的歌单（来源于 indexes.index[].artist[]）\n  const dirs = [];\n  const groups = indexes.index || [];\n  for (const group of groups) {\n    const list = group.artist || [];\n    for (const item of list) {\n      dirs.push({\n        id: String(item.id),\n        name: item.name || item.title || 'Unknown Directory',\n        title: item.name || item.title || 'Unknown Directory',\n        artist: 'Subsonic',\n        kind: 'album',\n        coverArt: item.coverArt || item.id,\n        childUrl: baseUrl + '/rest/getMusicDirectory.view?id=' + encodeURIComponent(item.id) + '&' + authQuery,\n      });\n    }\n  }\n\n  // 3. 对其他目录下的歌单进行随机打乱 (Fisher-Yates Shuffle)\n  for (let i = dirs.length - 1; i > 0; i--) {\n    const j = Math.floor(Math.random() * (i + 1));\n    const temp = dirs[i];\n    dirs[i] = dirs[j];\n    dirs[j] = temp;\n  }\n\n  // 4. 返回：第一个是默认歌单，之后是随机的其他目录歌单\n  return [defaultPlaylist, ...dirs];\n}\n\n/**\n * 提取目录、根目录索引或专辑中的歌曲列表\n * 自动排除子文件夹，仅保留音频文件\n * @param {object} res - 响应对象\n */\nfunction getDirectorySongs(res) {\n  const root = (res && res['subsonic-response']) || res || {};\n  const list = (root.directory && root.directory.child) ||\n    (root.indexes && root.indexes.child) ||\n    (root.album && root.album.song) || [];\n  return list.filter(function (item) {\n    return !item.isDir;\n  });\n}"
 }
