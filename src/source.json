@@ -1,7 +1,7 @@
 {
   "sourceUrl": "https://Subsonic.example.org",
   "sourceName": "Subsonic",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "author": "BBeBee",
   "sourceGroup": "self-hosted,subsonic",
   "needsLyricSource": true,
@@ -80,5 +80,8 @@
     "artist": "$.subsonic-response.directory.artist || $.subsonic-response.album.artist || =Subsonic",
     "year": "$.subsonic-response.album.year",
     "trackCount": "$.subsonic-response.album.songCount"
+  },
+  "ruleLyric": {
+    "lyric": "={{@js:getSubsonicLyrics()}}"
   }
 }

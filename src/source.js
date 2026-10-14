@@ -104,3 +104,82 @@ function getDirectorySongs(res) {
     return !item.isDir;
   });
 }
+
+/**
+ * 获取 Subsonic / Navidrome 歌曲歌词
+ * 优先尝试 OpenSubsonic getLyricsBySongId（若服务器支持，可直接提供带时间戳的同步歌词）；
+ * 若无或不支持，通过 getLyrics.view?artist=...&title=... 获取纯文本/LRC 歌词；
+ * 若服务器无歌词或返回空对象，返回空字符串，触发回退至应用默认歌词源（如 LRCLIB）
+ */
+async function getSubsonicLyrics() {
+  const baseUrl = getBaseUrl();
+  if (!baseUrl) return '';
+  const authQuery = auth();
+
+  const trackObj = (typeof track !== 'undefined' && track) ? track : {};
+  let artist = trackObj.artist || trackObj.albumArtist || '';
+  let title = trackObj.title || '';
+  const trackId = trackObj.id || '';
+
+  // 1. 若支持 OpenSubsonic getLyricsBySongId，优先根据 trackId 尝试获取（可能包含带时间轴的同步歌词）
+  if (trackId) {
+    try {
+      const byIdUrl = baseUrl + '/rest/getLyricsBySongId.view?id=' + encodeURIComponent(trackId) + '&' + authQuery;
+      const resById = await src.get(byIdUrl);
+      if (resById && resById.status === 200 && resById.body) {
+        const data = src.parse.json(resById.body);
+        const resp = data && data['subsonic-response'];
+        if (resp && resp.lyricsList && Array.isArray(resp.lyricsList.structuredLyrics)) {
+          const structured = resp.lyricsList.structuredLyrics[0];
+          if (structured && Array.isArray(structured.line) && structured.line.length > 0) {
+            const pad = function (n, len) { return (new Array(len + 1).join('0') + n).slice(-len); };
+            const lrcLines = structured.line.map(function (l) {
+              const ms = l.start || 0;
+              const m = Math.floor(ms / 60000);
+              const s = Math.floor((ms % 60000) / 1000);
+              const c = Math.floor((ms % 1000) / 10);
+              return '[' + pad(m, 2) + ':' + pad(s, 2) + '.' + pad(c, 2) + ']' + (l.value || '');
+            });
+            return lrcLines.join('\n');
+          }
+        }
+      }
+    } catch (e) {
+      // 忽略 404 或解析异常，继续回退到 getLyrics.view
+    }
+  }
+
+  // 2. 若缺少 artist 或 title，尝试通过 getSong.view 补全
+  if ((!artist || !title) && trackId) {
+    try {
+      const songUrl = baseUrl + '/rest/getSong.view?id=' + encodeURIComponent(trackId) + '&' + authQuery;
+      const songRes = await src.get(songUrl);
+      if (songRes && songRes.body) {
+        const songData = src.parse.json(songRes.body);
+        const song = songData && songData['subsonic-response'] && songData['subsonic-response'].song;
+        if (song) {
+          artist = artist || song.artist || '';
+          title = title || song.title || '';
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  if (!artist && !title) return '';
+
+  // 3. 调用标准 Subsonic getLyrics.view 获取歌词
+  try {
+    const lyricUrl = baseUrl + '/rest/getLyrics.view?artist=' + encodeURIComponent(artist) + '&title=' + encodeURIComponent(title) + '&' + authQuery;
+    const res = await src.get(lyricUrl);
+    if (!res || !res.body) return '';
+    const data = src.parse.json(res.body);
+    const lyrics = data && data['subsonic-response'] && data['subsonic-response'].lyrics;
+    if (!lyrics) return '';
+    const content = lyrics.content || lyrics.value || lyrics['#'] || '';
+    return typeof content === 'string' ? content.trim() : '';
+  } catch (e) {
+    return '';
+  }
+}
