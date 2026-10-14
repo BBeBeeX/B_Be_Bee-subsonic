@@ -26,7 +26,7 @@
   ],
   "loginType": "form",
   "loginUrl": "{{source.url}}/rest/ping.view?u={{login.user}}&p={{login.password}}&v=1.16.1&c=BBeBee&f=json",
-  "loginCheckJs": "@js:\n// Check if Subsonic response status is ok\nconst res = (result && result['subsonic-response']) || result;\nreturn Boolean(res && res.status === 'ok');",
+  "loginCheckJs": "// Check if Subsonic response status is ok\nconst res = (result && result['subsonic-response']) || result;\nreturn Boolean(res && res.status === 'ok');",
   "searchUrl": "{{source.url}}/rest/search3.view?query={{key}}&songCount=50&songOffset={{@js:(page-1)*50}}&{{@js:auth()}}",
   "exploreUrl": "[{\"title\":\"Recently added\",\"url\":\"{{source.url}}/rest/getAlbumList2.view?type=newest&size=100&offset={{@js:(page-1)*100}}&{{@js:auth()}}\"},{\"title\":\"Alphabetical\",\"url\":\"{{source.url}}/rest/getAlbumList2.view?type=alphabeticalByName&size=100&offset={{@js:(page-1)*100}}&{{@js:auth()}}\"}]",
   "recommendUrl": "{{source.url}}/rest/getIndexes.view?{{@js:auth()}}",
