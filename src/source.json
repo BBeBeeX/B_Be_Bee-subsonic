@@ -1,9 +1,10 @@
 {
   "sourceUrl": "https://Subsonic.example.org",
   "sourceName": "Subsonic",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "author": "BBeBee",
   "sourceGroup": "self-hosted,subsonic",
+  "needsLyricSource": true,
   "sourceComment": "Subsonic-compatible music server. Host is configured via sourceUrl; credentials user and password are provided via loginUi.",
   "variableComment": "username:password",
   "concurrentRate": "5/1000",
@@ -79,8 +80,5 @@
     "artist": "$.subsonic-response.directory.artist || $.subsonic-response.album.artist || =Subsonic",
     "year": "$.subsonic-response.album.year",
     "trackCount": "$.subsonic-response.album.songCount"
-  },
-  "ruleLyric": {
-    "lyric": "={{source.url}}/rest/getLyrics.view?artist={{track.artist}}&title={{track.title}}&{{@js:auth()}}"
   }
 }

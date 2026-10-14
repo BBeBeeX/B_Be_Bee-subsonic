@@ -1,9 +1,10 @@
 {
   "sourceUrl": "https://Subsonic.example.org",
   "sourceName": "Subsonic",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "author": "BBeBee",
   "sourceGroup": "self-hosted,subsonic",
+  "needsLyricSource": true,
   "sourceComment": "Subsonic-compatible music server. Host is configured via sourceUrl; credentials user and password are provided via loginUi.",
   "variableComment": "username:password",
   "concurrentRate": "5/1000",
@@ -79,9 +80,6 @@
     "artist": "$.subsonic-response.directory.artist || $.subsonic-response.album.artist || =Subsonic",
     "year": "$.subsonic-response.album.year",
     "trackCount": "$.subsonic-response.album.songCount"
-  },
-  "ruleLyric": {
-    "lyric": "={{source.url}}/rest/getLyrics.view?artist={{track.artist}}&title={{track.title}}&{{@js:auth()}}"
   },
   "jsLib": "/**\n * Subsonic / Navidrome / Airsonic 辅助运行时函数库\n * 提供请求鉴权签名、URL 清洗、推荐歌单生成与目录歌曲提取功能\n */\n\n/**\n * 获取清洗后的服务器基础地址\n * 移除浏览器地址栏常见的 /index.view 或 /login.view 等后缀\n */\nfunction getBaseUrl() {\n  const raw = (typeof source !== 'undefined' && source && source.url) || '';\n  return raw.replace(/\\/(index|login)\\.view(\\?.*)?$/i, '').replace(/\\/+$/, '');\n}\n\n/**\n * 生成 Subsonic REST API 鉴权查询字符串\n * 优先读取独立凭据 user 和 password，兼容单字段 var (user:password)\n * 使用标准 Subsonic MD5 盐值哈希: token = md5(password + salt)\n */\nfunction auth() {\n  let u = src.vars.get('user') || src.vars.get('username') || '';\n  let p = src.vars.get('password') || '';\n  if (!u || !p) {\n    const v = String(src.vars.get('var') || '');\n    if (v.includes(':')) {\n      const idx = v.indexOf(':');\n      u = u || v.slice(0, idx);\n      p = p || v.slice(idx + 1);\n    }\n  }\n  const s = src.crypto.randomHex(8);\n  const t = src.crypto.md5(p + s);\n  return 'u=' + encodeURIComponent(u) + '&t=' + t + '&s=' + s + '&v=1.16.1&c=BBeBee&f=json';\n}\n\n/**\n * 生成推荐歌单列表\n * 规则要求：返回的歌单列表第1个是默认歌单（来自根目录），之后的是其他目录下的歌单（随机）\n * @param {object} res - getIndexes.view 响应对象\n * @param {string} sourceUrl - 音乐源基础地址\n */\nfunction buildRecommendList(res, sourceUrl) {\n  const root = (res && res['subsonic-response']) || res || {};\n  const indexes = root.indexes || {};\n  const baseUrl = getBaseUrl() || (sourceUrl ? String(sourceUrl).replace(/\\/+$/, '') : '');\n  const authQuery = auth();\n\n  // 1. 构建首位默认歌单（来源于根目录音乐文件 indexes.child）\n  const rootSongs = indexes.child || [];\n  const defaultCover = (rootSongs[0] && (rootSongs[0].coverArt || rootSongs[0].id)) || '';\n  const defaultPlaylist = {\n    id: 'dir-root',\n    name: '默认歌单',\n    title: '默认歌单',\n    artist: 'Subsonic',\n    kind: 'album',\n    coverArt: defaultCover,\n    trackCount: rootSongs.length,\n    childUrl: baseUrl + '/rest/getIndexes.view?' + authQuery,\n  };\n\n  // 2. 收集其他目录下的歌单（来源于 indexes.index[].artist[]）\n  // 使用 dir- 前缀隔离物理目录 ID 与 ID3 专辑 ID，防止 URN 碰撞\n  const dirs = [];\n  const groups = indexes.index || [];\n  for (const group of groups) {\n    const list = group.artist || [];\n    for (const item of list) {\n      dirs.push({\n        id: 'dir-' + String(item.id),\n        name: item.name || item.title || 'Unknown Directory',\n        title: item.name || item.title || 'Unknown Directory',\n        artist: 'Subsonic',\n        kind: 'album',\n        coverArt: item.coverArt || item.id,\n        childUrl: baseUrl + '/rest/getMusicDirectory.view?id=' + encodeURIComponent(item.id) + '&' + authQuery,\n      });\n    }\n  }\n\n  // 3. 对其他目录下的歌单进行随机打乱 (Fisher-Yates Shuffle)\n  for (let i = dirs.length - 1; i > 0; i--) {\n    const j = Math.floor(Math.random() * (i + 1));\n    const temp = dirs[i];\n    dirs[i] = dirs[j];\n    dirs[j] = temp;\n  }\n\n  // 4. 返回：第一个是默认歌单，之后是随机的其他目录歌单\n  return [defaultPlaylist, ...dirs];\n}\n\n/**\n * 提取目录、根目录索引或专辑中的歌曲列表\n * 自动排除子文件夹，仅保留音频文件\n * @param {object} res - 响应对象\n */\nfunction getDirectorySongs(res) {\n  const root = (res && res['subsonic-response']) || res || {};\n  const list = (root.directory && root.directory.child) ||\n    (root.indexes && root.indexes.child) ||\n    (root.album && root.album.song) || [];\n  return list.filter(function (item) {\n    return !item.isDir;\n  });\n}"
 }
