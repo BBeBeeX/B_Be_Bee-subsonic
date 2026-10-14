@@ -1,7 +1,7 @@
 {
-  "sourceUrl": "https://music.example.org",
+  "sourceUrl": "Subsonic",
   "sourceName": "Subsonic",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "BBeBee",
   "sourceGroup": "self-hosted,subsonic",
   "sourceComment": "Subsonic-compatible music server. Host is configured via sourceUrl; credentials user and password are provided via loginUi.",
